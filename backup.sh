@@ -17,15 +17,21 @@ echo "-h help"
 echo "-c compress backup"
 echo "-d backup destination"
 echo "-f files to include"
+echo "-m modification date ('+' - greater than, '-' - less than, '' - exactly) "
+echo "-s file size (in kilobytes)"
+echo "-o owner"
 }
 
-while getopts :hvcd:f: OPTION
+while getopts :hvcm:s:o:d:f: OPTION
 do
 	case $OPTION in
 		h ) help ;;
 		c ) exit 1;;
 		d ) DEST_FOLDER="$OPTARG/backup" ;;
-		f ) FILES+=("$OPTARG");;
+		f ) FILES+=("$OPTARG") ;;
+		m ) LAST_MODIFIED="-mtime $OPTARG";;
+		s ) SIZE="-size $OPTARG"."k";;
+		o ) OWNER="-user $OPTARG" ;;
 		v ) echo -e "Backup script\nAuthor: Igor Chorazewicz\nVersion: 1.0" 
 		    exit ;;
 		\?) echo "Invalid option -$OPTARG" >&2
@@ -42,5 +48,6 @@ fi
 mkdir -p "$DEST_FOLDER"	
 
 for FILE in "${FILES[@]}"; do
-	cp -r "$FILE" "$DEST_FOLDER"	
+	find "$FILE" $LAST_MODIFIED $SIZE $OWNER -exec cp {} "$DEST_FOLDER" \; #TODO : " "
+	 #cp -r "$FILE" "$DEST_FOLDER"	
 done
