@@ -15,6 +15,7 @@ help(){
 echo "Options:"
 echo "-h help"
 echo "-c compress backup"
+echo "-p preserve folders structure"
 echo "-d backup destination"
 echo "-f files to include"
 echo "-m modification date ('+' - greater than, '-' - less than, '' - exactly) "
@@ -22,32 +23,45 @@ echo "-s file size (in kilobytes)"
 echo "-o owner"
 }
 
-while getopts :hvcm:s:o:d:f: OPTION
+preserve_struct=false
+
+while getopts :hvpcm:s:o:d:f: OPTION
 do
 	case $OPTION in
 		h ) help ;;
 		c ) exit 1;;
-		d ) DEST_FOLDER="$OPTARG/backup" ;;
-		f ) FILES+=("$OPTARG") ;;
-		m ) LAST_MODIFIED="-mtime $OPTARG";;
-		s ) SIZE="-size $OPTARG"."k";;
-		o ) OWNER="-user $OPTARG" ;;
+		p ) preserve_struct=true ;;
+		d ) dest_folder="$OPTARG/backup" ;;
+		f ) files+=("$OPTARG") ;;
+		m ) last_modified="-mtime $OPTARG";;
+		s ) size="-size $OPTARG"."k";;
+		o ) owner="-user $OPTARG" ;;
 		v ) echo -e "Backup script\nAuthor: Igor Chorazewicz\nVersion: 1.0" 
 		    exit ;;
-		\?) echo "Invalid option -$OPTARG" >&2
+		\?) echo "Invalid option -$OPTARG" >&2	# >&2 redirects stdout to stderr
 		    exit 1;;
 		: ) echo "Missing option argument for -$OPTARG" >&2
 	esac
 done
 
-if [ -z "$DEST_FOLDER" ]; then
+if [ -z "$dest_folder" ]; then
 	echo "Destination folder must be specified"
 	exit 1
 fi
 
-mkdir -p "$DEST_FOLDER"	
+# creates folder if it doesn't exist
+mkdir -p "$dest_folder"	
 
-for FILE in "${FILES[@]}"; do
-	find "$FILE" $LAST_MODIFIED $SIZE $OWNER -exec cp {} "$DEST_FOLDER" \; #TODO : " "
-	 #cp -r "$FILE" "$DEST_FOLDER"	
+if $preserve_struct ; then
+	copy_opt="--parents"
+	dest_folder=$(cd -- "$dest_folder" && pwd) # Makes it absolute path 
+
+# A double dash (--) is used in commands to signify the end of
+# command options, so files containing dashes or other special
+# characters won't break the command.
+fi
+
+for file in "${files[@]}"; do
+	cd -- "$file" &&
+	find . $last_modified $size $owner -exec cp 2> /dev/null $copy_opt {} "$dest_folder"  \;	
 done
